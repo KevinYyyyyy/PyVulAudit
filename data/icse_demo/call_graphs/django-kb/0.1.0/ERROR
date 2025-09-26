@@ -1,0 +1,16 @@
+Failed to run jarvis_cli.py Traceback (most recent call last):
+  File "/Users/keviny/miniconda3/envs/PyVul/bin/jarvis-cli", line 33, in <module>
+    sys.exit(load_entry_point('jarvis-cli', 'console_scripts', 'jarvis-cli')())
+  File "/Users/keviny/Gitclone/Jarvis/tool/Jarvis_M/src/Jarvis/jarvis_cli.py", line 73, in main
+    cg.analyze()
+  File "/Users/keviny/Gitclone/Jarvis/tool/Jarvis_M/src/Jarvis/jarvis.py", line 150, in analyze
+    self.do_pass(
+  File "/Users/keviny/Gitclone/Jarvis/tool/Jarvis_M/src/Jarvis/jarvis.py", line 118, in do_pass
+    processor = cls(
+  File "/Users/keviny/Gitclone/Jarvis/tool/Jarvis_M/src/Jarvis/processing/extProcessor.py", line 58, in __init__
+    super().__init__(filename, modname, modules_analyzed)
+  File "/Users/keviny/Gitclone/Jarvis/tool/Jarvis_M/src/Jarvis/processing/base.py", line 31, in __init__
+    with open(filename, "rt",errors="ignore") as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/keviny/Desktop/Research/PhD_Research/Projects_coding/PyVulAduit_ICSE26_Demo/docker_workdir_new/pypi_packages/django-kb/0.1.0/kb/vote/models.py'
+
+ERROR conda.cli.main_run:execute(125): `conda run jarvis-cli kb/vote/models.py kb/vote/__init__.py kb/vote/admin.py kb/vote/utils.py kb/vote/urls.py kb/vote/views.py kb/templatetags/__init__.py kb/templatetags/kbtags.py kb/migrations/__init__.py kb/migrations/0001_initial.py kb/models.py kb/category/querysets.py kb/category/models.py kb/category/feeds.py kb/category/__init__.py kb/category/forms.py kb/category/admin.py kb/category/urls.py kb/category/views.py kb/category/managers.py kb/search_indexes.py kb/feeds.py kb/__init__.py kb/forms.py kb/admin.py kb/settings.py kb/article/querysets.py kb/article/models.py kb/article/search_indexes.py kb/article/__init__.py kb/article/forms.py kb/article/admin.py kb/article/urls.py kb/article/views.py kb/article/managers.py kb/urls.py kb/base/behaviours.py kb/base/querysets.py kb/base/search_indexes.py kb/base/__init__.py kb/base/choices.py kb/base/views.py kb/middleware.py kb/views.py --decy -o /Users/keviny/Desktop/Research/PhD_Research/Projects_coding/PyVulAduit_ICSE26_Demo/data/icse_demo/call_graphs/django-kb/0.1.0/jarvis_cg.json -ext ../docker_workdir_new/pypi_packages/django-kb/0.1.0` failed. (See above for error)
