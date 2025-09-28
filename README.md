@@ -60,18 +60,13 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
-### Install CG Tool and google-chrome
-
-JARVIS is required for **call graph construction**:
+### Install CG Tool
 
 ```shell
-git clone https://github.com/your-username/jarvis_cg.git JARVIS
+# JARVIS is required for call graph construction:
+conda create -n jarvis python=3.9
+conda activate jarvis
 pip install -e JARVIS/tool/Jarvis_M/src
-
-get -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-sudo apt update
-sudo apt install -y google-chrome-stable
 ```
 
 ## 🚀 Quick Start
