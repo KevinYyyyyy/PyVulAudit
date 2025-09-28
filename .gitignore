@@ -1,0 +1,219 @@
+# PyVulAudit - Python Vulnerability Audit Tool
+# .gitignore file for security research project
+
+# ============================================================================
+# Python specific
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# ============================================================================
+# IDE and Editor files
+# ============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ============================================================================
+# Operating System files
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+~$*
+
+# ============================================================================
+# Project specific - Data and Analysis
+# ============================================================================
+# Large data files and databases
+data_collection/all.zip
+data_collection/db-dump.tar.gz
+data_collection/pypi_vuls.json
+
+# Data collection directories
+data_collection/downloads/
+data_collection/jarvis_outputs/
+data_collection/dependents/
+data_collection/repos/
+data_collection/available_versions/
+data_collection/extracted/
+data_collection/code_changes/
+data_collection/fixing_commits/
+data_collection/snyk_urls/
+data_collection/modules/
+data_collection/call_graphs/
+
+# Analysis results and generated data
+data/call_graphs/*/
+data/modules/
+src/data/call_graphs/
+src/data/modules/
+src/pypi_vuls/
+
+# Research snapshots and temporary data
+src/research_snapshots/
+data_collection/202508/
+data_collection/pairs/
+data_collection/tmp/
+data/*
+
+# ============================================================================
+# Docker and Containerization
+# ============================================================================
+docker_workdir/
+docker_workdir*/
+
+# ============================================================================
+# Logs and Temporary files
+# ============================================================================
+logs/
+**/logs/
+*.log
+*.tmp
+tmp/
+**/tmp/
+
+# ============================================================================
+# Archive and Binary files
+# ============================================================================
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+*.whl
+*.pkl
+*.pickle
+
+# ============================================================================
+# Output and Result files
+# ============================================================================
+*.json
+*.xml
+*.csv
+*.txt
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.pdf
+
+# ============================================================================
+# Configuration and Secrets
+# ============================================================================
+.env.local
+.env.*.local
+config.local.*
+secrets.json
+*.key
+*.pem
+*.crt
+*.p12
+sync_config.jsonc
+
+# ============================================================================
+# Dependency and Package files
+# ============================================================================
+node_modules/
+*.iml
+
+# ============================================================================
+# Exceptions (files to keep)
+# ============================================================================
+# Keep important configuration files
+!requirements.txt
+!setup.py
+!pyproject.toml
+!Dockerfile
+!docker-compose.yml
+!README.md
+!LICENSE
+!.gitignore
+
+# Keep example and documentation files
+!examples/README*.md
+!docs/**/*.md
+!docs/**/*.png
+
+# Keep essential data structure files
+!data/.gitkeep
+!data_collection/.gitkeep
+!logs/.gitkeep
