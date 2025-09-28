@@ -27,7 +27,9 @@ PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities 
 - **Reachability Analysis**: Intra-package call graph analysis to determine if vulnerable functions are reachable in downstream projects
 - **Command-line Interface**: User-friendly CLI with comprehensive options
 
-## 📋 Requirements
+## 🛠 Installation
+
+### Prerequisites
 
 - **Python**: Version 3.9 or higher
 - **Docker**: Required for containerized installation 
@@ -35,15 +37,6 @@ PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities 
 - **Git Personal Access Token** : Required for repository analysis
 - **Memory**: Sufficient RAM recommended for call graph construction(configurable based on analysis scope; 32GB was used in our experiments)
 - **Storage**: Sufficient disk space for vulnerability databases and analysis results
-
-## 🛠 Installation
-
-### Prerequisites
-
-- Python 3.8 or higher
-- Git
-- Docker (for package analysis)
-- Chrome/Chromium browser (for dependency collection)
 
 ### Clone the Repository
 

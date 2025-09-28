@@ -169,7 +169,7 @@ tmp/
 *.xml
 *.csv
 *.txt
-*.png
+
 *.jpg
 *.jpeg
 *.gif
