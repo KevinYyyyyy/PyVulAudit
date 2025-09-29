@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
 
-PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities and their patches. It automatically collects vulnerability data from the OSV database, analyzes patch implementations, and performs reachability analysis to understand the impact of vulnerabilities in Python codebases. This tool is designed for security researchers, developers, and maintainers who need to assess vulnerability exposure and patch effectiveness in Python projects.
+PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities and their impact to other Python packages. It automatically collects vulnerability data from the OSV database, analyzes patch implementations, and performs reachability analysis to understand the impact of vulnerabilities in PyPI ecosystem. This tool is designed for security researchers, developers, and maintainers who need to assess vulnerability exposure in Python projects.
 
 ![PyVulAudit Architecture Overview](overview.png)
 

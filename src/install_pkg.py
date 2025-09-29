@@ -373,6 +373,7 @@ class EnvAnalyzer:
         command = " && ".join(commands)
         
         try:
+            logger.info(f"Installing {package} { version}")
             return self._run_docker_command(command, mount, package_dir, timeout)
         except Exception as e:
             logger.error(f"Docker execution failed for {package} {version}: {e}")
@@ -643,8 +644,8 @@ class JarvisCallGraphGenerator:
         jarvis_output_dir = jarvis_output_file.parent
         jarvis_output_dir.mkdir(parents=True, exist_ok=True)
         
-        if jarvis_output_file.exists() and not rewrite:
-            return True
+        # if jarvis_output_file.exists() and not rewrite:
+        #     return True
         py_version = _check_package_installed(package, version, workdir)
         if not py_version:
             return False
@@ -673,7 +674,7 @@ class JarvisCallGraphGenerator:
             jarvis_timeout = 300  # 5 minutes
             max_mem_gb = max_mem_gb or 8
             cmd = (
-                f"timeout {jarvis_timeout} conda run -n jarvis jarvis-cli {entry_files} "
+                f"timeout {jarvis_timeout}  jarvis-cli {entry_files} "
                 f"--decy -o {jarvis_output_file} -ext {external_abs_path}"
             )
         else:
@@ -681,7 +682,7 @@ class JarvisCallGraphGenerator:
             max_mem_gb = max_mem_gb or 32
             cmd = (
                 f"ulimit -v {max_mem_gb * 1024 * 1024} && "
-                f"timeout {jarvis_timeout} conda run -n jarvis jarvis-cli {entry_files} "
+                f"timeout {jarvis_timeout}  jarvis-cli {entry_files} "
                 f"--decy -o {jarvis_output_file} -ext {external_abs_path}"
             )
         try:
@@ -698,20 +699,27 @@ class JarvisCallGraphGenerator:
                 if "memoryerror" in result.stderr.lower():
                     error_msg = f'MemoryError detected {max_mem_gb}G: {result.stderr}'
                     logger.error(f"MemoryError detected in jarvis_cli.py for {package} {version}")
+                    return False
+
                 
                 (jarvis_output_dir / 'ERROR').write_text(error_msg)
                 logger.error(f"Failed to run jarvis_cli.py for {package} {version}: {result.stderr}")
+                return False
+
                 
         except subprocess.TimeoutExpired as e:
             error_msg = f'{package} {version} Timeout after {e.timeout}s: {str(e)}'
             (jarvis_output_dir / 'ERROR').write_text(error_msg)
             logger.error(f"Jarvis execution timed out after {e.timeout} seconds")
+            return False
+
             
         except OSError as e:
             error_msg = f'{package} {version} OSError: {str(e)}'
             if 'Argument list too long' in str(e):
                 logger.error(f"Argument list too long for {package} {version}")
             (jarvis_output_dir / 'ERROR').write_text(error_msg)
+            return False
         
         if not jarvis_output_file.exists():
             logger.warning(f"Jarvis execution failed for {package} {version}")
@@ -816,8 +824,8 @@ def filter_packages_for_processing(packages: List[Tuple[str, str]],
         jarvis_error_file = CALL_GRAPH_DIR_DATE / package / version / 'ERROR'
         
         # Skip if call graph already exists
-        if jarvis_output_file.exists():
-            continue
+        # if jarvis_output_file.exists():
+        #     continue
             
         # Handle existing errors
         if jarvis_error_file.exists():
@@ -827,9 +835,9 @@ def filter_packages_for_processing(packages: List[Tuple[str, str]],
                     continue
             else:
                 continue
-        install_error_file = package_dir / 'HAVEERROR'
-        if install_error_file.exists():
-            continue
+        # install_error_file = package_dir / 'HAVEERROR'
+        # if install_error_file.exists():
+        #     continue
         
         # Check attempted versions
         tried_versions_file = package_dir / 'TRIED_PY_VERSION'
@@ -1031,6 +1039,7 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
         max_mem_gb: Maximum memory per thread
         mem_out_task: Whether this is a memory-out retry task
     """
+
     # Configure threading based on platform
     if sys.platform == 'darwin':
         n_threads_cg = 2
@@ -1040,7 +1049,6 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
         n_threads_cg = n_threads_cg or 8
         n_threads_install = 15
         max_mem_gb = max_mem_gb or 32
-    
     for py_version, packages in install_tasks.items():
         py_version = py_version.strip()
         
@@ -1054,12 +1062,13 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
         
         # Filter packages if list provided
         if install_tasks_list:
-            packages = [pkg for pkg in packages if tuple(pkg) in install_tasks_list]
+            packages = [pkg for pkg in packages if tuple(pkg) in install_tasks_list or pkg in install_tasks_list]
         
         if not packages:
             continue
         
         analyzer_install = None
+
         
         try:
             if not only_py_list:
@@ -1102,7 +1111,7 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
                                     logger.warning(f"Installation failed: {result.package} {result.version}")
                                     # print(f"❌ Installation failed: {result.package} {result.version}")
                                 else:
-                                    logger.warning(f"Installation success: {result.package} {result.version}")
+                                    logger.debug(f"Installation success: {result.package} {result.version}")
                                     # print(f"✅ Installation success: {result.package} {result.version}")
 
                                     
@@ -1156,10 +1165,12 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
         
         except docker.errors.BuildError:
             logger.warning(f"Failed to create analyzer for python version {py_version}")
+
             continue
         except Exception as e:
             logger.error(f"Unexpected error processing Python {py_version}: {e}")
             raise
+
         finally:
             if analyzer_install:
                 analyzer_install.close()
