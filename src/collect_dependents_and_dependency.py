@@ -630,7 +630,7 @@ def main():
                 if cve in args.cve
             }
             if not filtered_cve2advisory:
-                print(f"⚠️ Specified CVEs not found: {args.cve}")
+                print(f"⚠️ Specified CVEs not found in {cvf_output_file} (need to first execute patch_parser.py for them): {args.cve}")
                 logger.warning(f"None of the specified CVEs {args.cve} were found in the dataset")
                 return
             print(f"✅ {len(filtered_cve2advisory)} CVEs remaining after filtering")

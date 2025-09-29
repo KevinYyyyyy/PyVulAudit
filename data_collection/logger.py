@@ -20,7 +20,7 @@ class ColorFormatter(logging.Formatter):
         return f"{color}{log_message}{self.RESET}"
 
 def setup_logger(name: str, log_file: str = None, level: int = logging.INFO, 
-                 console_output: bool = False, file_output: bool = True):
+                 console_output: bool = True, file_output: bool = True):
     """配置并返回一个logger实例
     
     Args:

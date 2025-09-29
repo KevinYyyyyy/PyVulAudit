@@ -1839,24 +1839,24 @@ class PatchParser:
                 cve_function_counts[cve_id] = total_functions
         
         # Print CVE filtering statistics
-        print("\n" + "="*80)
-        print("📊 CVE FILTERING STATISTICS")
-        print("="*80)
+        # print("\n" + "="*80)
+        # print("📊 CVE FILTERING STATISTICS")
+        # print("="*80)
         
-        # Sort CVEs by function count for better display
-        sorted_cves = sorted(cve_function_counts.items(), key=lambda x: x[1], reverse=True)
+        # # Sort CVEs by function count for better display
+        # sorted_cves = sorted(cve_function_counts.items(), key=lambda x: x[1], reverse=True)
         
-        print(f"CVEs with vulnerable functions: {len(cves_with_vf)}")
-        print(f"CVEs without vulnerable functions: {len(vul_func_analysis) - len(cves_with_vf)}")
+        # print(f"CVEs with vulnerable functions: {len(cves_with_vf)}")
+        # print(f"CVEs without vulnerable functions: {len(vul_func_analysis) - len(cves_with_vf)}")
         print(f"Total functions found: {sum(cve_function_counts.values())}")
         
-        if sorted_cves:
-            print("\n🎯 Top CVEs by function count:")
-            for i, (cve_id, count) in enumerate(sorted_cves[:10]):  # Show top 10
-                print(f"  {i+1:2d}. {cve_id}: {count} functions")
+        # if sorted_cves:
+        #     print("\n🎯 Top CVEs by function count:")
+        #     for i, (cve_id, count) in enumerate(sorted_cves[:10]):  # Show top 10
+        #         print(f"  {i+1:2d}. {cve_id}: {count} functions")
             
-            if len(sorted_cves) > 10:
-                print(f"  ... and {len(sorted_cves) - 10} more CVEs")
+        #     if len(sorted_cves) > 10:
+        #         print(f"  ... and {len(sorted_cves) - 10} more CVEs")
         
         # Filter cve2advisory to only include CVEs with vulnerable functions
         cve2advisory_cvf = {cve_id: advisory for cve_id, advisory in cve2advisory.items() 
@@ -2593,16 +2593,17 @@ def create_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python patch_parser.py --analyze
-  python patch_parser.py --analyze --cve CVE-2020-13757
-  python patch_parser.py --analyze --package Django
+  python patch_parser.py                              # Analyze patches (default mode)
+  python patch_parser.py --cve CVE-2020-13757        # Analyze specific CVE
+  python patch_parser.py --package Django             # Analyze specific package
+  python patch_parser.py --analyze                    # Explicit analyze mode
         """
     )
     
     parser.add_argument(
         '--analyze',
         action='store_true',
-        help='Analyze patches and code changes for vulnerability fixes'
+        help='Analyze patches and code changes for vulnerability fixes (default if no other mode specified)'
     )
     
     parser.add_argument(
@@ -2699,9 +2700,10 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
+    # If no specific operation is requested, default to analyze mode
     if not args.analyze:
-        parser.print_help()
-        return
+        print("No operation mode specified, defaulting to --analyze mode...")
+        args.analyze = True
     
     print("🔍 Starting patch analysis...")
     logger.info("Starting patch analysis...")

@@ -684,7 +684,6 @@ class JarvisCallGraphGenerator:
                 f"timeout {jarvis_timeout} conda run -n jarvis jarvis-cli {entry_files} "
                 f"--decy -o {jarvis_output_file} -ext {external_abs_path}"
             )
-        
         try:
             result = subprocess.run(
                 cmd, 
@@ -828,6 +827,9 @@ def filter_packages_for_processing(packages: List[Tuple[str, str]],
                     continue
             else:
                 continue
+        install_error_file = package_dir / 'HAVEERROR'
+        if install_error_file.exists():
+            continue
         
         # Check attempted versions
         tried_versions_file = package_dir / 'TRIED_PY_VERSION'
@@ -1098,6 +1100,13 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
                                 result = future.result()
                                 if not result.success:
                                     logger.warning(f"Installation failed: {result.package} {result.version}")
+                                    # print(f"❌ Installation failed: {result.package} {result.version}")
+                                else:
+                                    logger.warning(f"Installation success: {result.package} {result.version}")
+                                    # print(f"✅ Installation success: {result.package} {result.version}")
+
+                                    
+                                    
                             except Exception as e:
                                 logger.error(f"Installation error: {e}")
                     
@@ -1174,7 +1183,6 @@ def _cleanup_batch_packages(workdir: Path, packages: List[Tuple[str, str]]) -> N
                 for filename in filenames
             )
             total_size += dir_size / (1024 * 1024 * 1024)  # Convert to GB
-        
         _cleanup_single_package(package, version, workdir)
     
     logger.info(f'Cleaned up {round(total_size, 2)}GB')
@@ -1587,8 +1595,8 @@ def main():
     
     # Filter out failed packages
     print(f"🧹 Filtering out failed packages:")
-    print(f"  ❌ Failed downstream: {len(failed_downstream)}")
     print(f"  ❌ Failed upstream: {len(failed_upstream)}")
+    print(f"  ❌ Failed downstream: {len(failed_downstream)}")
     all_downstream = [pkg for pkg in all_downstream if pkg not in failed_downstream]
     all_upstream = [pkg for pkg in all_upstream if pkg not in failed_upstream]
     
@@ -1597,7 +1605,6 @@ def main():
     print(f'  📦 Downstream packages: {len(all_downstream)}')
     logger.info(f'Successfully collected metadata for {len(all_upstream)} upstream '
                f'and {len(all_downstream)} downstream packages')
-    
     # Step 3: Generate installation tasks
     print(f'\n🔄 Step 3: Generating installation tasks')
     if not (install_tasks_file.exists() and install_tasks_file_for_upstream.exists()) or not args.use_cache:
@@ -1691,15 +1698,13 @@ def main():
     print(f"💾 Saving filtered pairs to: {args.workdir / 'filtered_pairs.pkl'}")
     with (args.workdir / 'filtered_pairs.pkl').open('wb') as f:
         pickle.dump(all_pairs_filtered,f)
-    print(all_upstream_filtered_with_py_file)
-    assert False
     
     # Step 5: Full installation with dependencies
     print(f'\n🔄 Step 6: Full package installation with dependencies')
     logger.info("Starting full package installation with dependencies")
     install_packages_with_version_control(
         install_tasks_for_downstream, args.workdir, metadata_file,
-        install_tasks_list=all_downstream_filtered_with_py_file, only_py_list=False, 
+        install_tasks_list=all_downstream_with_py_file, only_py_list=False, 
         save_installed=True
     )
     

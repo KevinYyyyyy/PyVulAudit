@@ -34,7 +34,7 @@ PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities 
 - **Python**: Version 3.9 or higher
 - **Docker**: Required for containerized installation 
 - **Chrome/Chromium**: Required for web scraping functionality
-- **Git Personal Access Token** : Required for repository analysis
+- **GitHub Access Token** : Required for repository analysis
 - **Memory**: Sufficient RAM recommended for call graph construction(configurable based on analysis scope; 32GB was used in our experiments)
 - **Storage**: Sufficient disk space for vulnerability databases and analysis results
 
@@ -50,16 +50,12 @@ cd PyVulAudit
 Install the required Python packages:
 
 ```shell
+conda create -n audit python=3.9
+conda activate audit
 pip install -r requirements.txt
-```
 
-### Install CG Tool
-
-```shell
-# JARVIS is required for call graph construction:
-conda create -n jarvis python=3.9
-conda activate jarvis
-pip install -e JARVIS/tool/Jarvis_M/src
+# jarvis-cli is required for call graph construction:
+pip install Jarvis/tool/Jarvis_Modified
 ```
 
 ## 🚀 Quick Start
@@ -68,94 +64,38 @@ To get started with PyVulAudit, follow these simple steps:
 
 1. **Run vulnerability collection**:
    ```bash
-   python vulnerability_collector.py --collect
+   python vulnerability_collector.py 
    ```
 
 2. **Perform patch analysis**:
 
    ```bash
-   python patch_parser.py --analyze
+   python patch_parser.py
    ```
 
 3. **Collect dependents and dependencies**:
    ```bash
-   python collect_dependents_and_dependency.py --cve CVE-2023-24580 CVE-2020-13757
+   python collect_dependents_and_dependency.py 
    ```
 
 4. **install pkgs and generate call graph**
 
+   ``````
+   python install_pkg.py 
+   ``````
+
 5. **Perform reachability analysis**:
 
    ```bash
-   python reachability_checker.py --cve CVE-2014-0480 --force-update --rewrite-cg
+   python reachability_checker.py 
    ```
 
 ## 📋 Command Line Parameters
 
 PyVulAudit supports various command line parameters for vulnerability collection and analysis.
 
-### Operation Modes
-
-<table>
-<thead>
-  <tr>
-    <th>Parameter</th>
-    <th>Description</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>--collect</code></td>
-    <td>Collect vulnerability data from OSV database</td>
-  </tr>
-  <tr>
-    <td><code>--analyze</code></td>
-    <td>Analyze patches and code changes for vulnerabilities</td>
-  </tr>
-  <tr>
-    <td><code>--reachability</code></td>
-    <td>Perform reachability analysis on vulnerable code paths</td>
-  </tr>
-</tbody>
-</table>
 
 ### Configuration Options
-
-<table>
-<thead>
-  <tr>
-    <th>Parameter</th>
-    <th>Type</th>
-    <th>Description</th>
-    <th>Default</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>--cve</code></td>
-    <td>String(s)</td>
-    <td>Specific CVE identifier(s) to analyze (can specify multiple)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--package</code></td>
-    <td>String</td>
-    <td>Specific package name to analyze vulnerabilities for</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--output</code></td>
-    <td>String</td>
-    <td>Output file path for results</td>
-    <td>data</td>
-  </tr>
-</tbody>
-</table>
-
-
-### Dependents Collection Parameters
-
-The `collect_dependents_and_dependency.py` script supports the following parameters:
 
 <table>
 <thead>
@@ -185,111 +125,11 @@ The `collect_dependents_and_dependency.py` script supports the following paramet
     <td>Force update of existing cached data</td>
     <td>False</td>
   </tr>
-  <tr>
-    <td><code>--no-dependents-count-skip</code></td>
-    <td>Integer</td>
-    <td>Skip processing after N consecutive versions with no dependents</td>
-    <td>-1 (no skip)</td>
-  </tr>
-  <tr>
-    <td><code>--collect-dependency-graph</code></td>
-    <td>Boolean</td>
-    <td>Enable collection of dependency graphs for each dependent package</td>
-    <td>False</td>
-  </tr>
 </tbody>
 </table>
 
-### Package Installation Parameters
 
-The `install_pkg.py` script supports the following parameters for package installation and analysis:
-
-<table>
-<thead>
-  <tr>
-    <th>Parameter</th>
-    <th>Type</th>
-    <th>Description</th>
-    <th>Default</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>--cve</code></td>
-    <td>String(s)</td>
-    <td>Specific CVE identifier(s) to analyze (supports multiple CVEs)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--package</code></td>
-    <td>String(s)</td>
-    <td>Specific package names to install and analyze (supports multiple packages)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--analyze-all</code></td>
-    <td>Boolean</td>
-    <td>Analyze all available CVEs and packages</td>
-    <td>False</td>
-  </tr>
-  <tr>
-    <td><code>--size</code></td>
-    <td>Integer</td>
-    <td>Limit the number of packages to process (for testing)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--workdir</code></td>
-    <td>String</td>
-    <td>Working directory for package installation</td>
-    <td>../docker_workdir_new</td>
-  </tr>
-  <tr>
-    <td><code>--snapshot-dir</code></td>
-    <td>String</td>
-    <td>Directory containing dependency snapshots</td>
-    <td>data/icse_demo/snapshots</td>
-  </tr>
-  <tr>
-    <td><code>--threads</code></td>
-    <td>Integer</td>
-    <td>Number of threads for parallel processing</td>
-    <td>10</td>
-  </tr>
-  <tr>
-    <td><code>--memory</code></td>
-    <td>Integer</td>
-    <td>Maximum memory allocation in GB</td>
-    <td>32</td>
-  </tr>
-  <tr>
-    <td><code>--force-update</code></td>
-    <td>Boolean</td>
-    <td>Force update of existing cached data</td>
-    <td>False</td>
-  </tr>
-  <tr>
-    <td><code>--only-py-list</code></td>
-    <td>Boolean</td>
-    <td>Only extract Python file lists without full installation</td>
-    <td>False</td>
-  </tr>
-  <tr>
-    <td><code>--save-installed</code></td>
-    <td>Boolean</td>
-    <td>Save information about successfully installed packages</td>
-    <td>False</td>
-  </tr>
-  <tr>
-    <td><code>--verbose</code></td>
-    <td>Boolean</td>
-    <td>Enable verbose output with detailed progress information</td>
-    <td>False</td>
-  </tr>
-</tbody>
-</table>
-
-### Reachability Analysis Parameters
+### Reachability Analysis Addtional Parameters
 
 The `reachability_checker.py` script supports the following parameters for vulnerability reachability analysis:
 
@@ -304,55 +144,20 @@ The `reachability_checker.py` script supports the following parameters for vulne
 </thead>
 <tbody>
   <tr>
-    <td><code>--cve</code></td>
-    <td>String(s)</td>
-    <td>Specific CVE identifier(s) to analyze (supports multiple CVEs)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--package</code></td>
-    <td>String(s)</td>
-    <td>Specific package names to analyze (supports multiple packages)</td>
-    <td>None</td>
-  </tr>
-  <tr>
-    <td><code>--reachability</code></td>
-    <td>Boolean</td>
-    <td>Perform reachability analysis on all available CVEs</td>
-    <td>False</td>
-  </tr>
-  <tr>
-    <td><code>--force-update</code></td>
-    <td>Boolean</td>
-    <td>Force re-analysis of CVEs, ignoring existing cache</td>
-    <td>False</td>
-  </tr>
-  <tr>
     <td><code>--rewrite-cg</code></td>
     <td>Boolean</td>
     <td>Force re-analysis of existing call graphs</td>
     <td>False</td>
   </tr>
   <tr>
-    <td><code>--size</code></td>
-    <td>String</td>
-    <td>Analysis scope: 'small', 'medium', 'large', or 'all'</td>
-    <td>all</td>
-  </tr>
-  <tr>
-    <td><code>--output</code></td>
-    <td>String</td>
-    <td>Output directory for analysis results</td>
-    <td>data</td>
-  </tr>
-  <tr>
-    <td><code>--verbose</code></td>
+    <td><code>--show-paths</code></td>
     <td>Boolean</td>
-    <td>Enable verbose output with detailed progress information</td>
+    <td>Output call paths</td>
     <td>False</td>
   </tr>
 </tbody>
 </table>
+
 
 ## 📖 Usage Examples
 
@@ -362,7 +167,7 @@ PyVulAudit provides several operation modes for different analysis needs. Here a
 
 Collect vulnerability data from the OSV database:
 ```bash
-python vulnerability_collector.py --collect
+python vulnerability_collector.py
 ```
 
 Expected output:
@@ -382,7 +187,7 @@ Total commits found: 3630
 
 Focus analysis on particular vulnerabilities:
 ```bash
-python vulnerability_collector.py --collect --cve CVE-2020-13757
+python vulnerability_collector.pyv --cve CVE-2020-13757
 ```
 
 Expected output:
@@ -402,7 +207,7 @@ Commit URLs: ['https://github.com/sybrenstuvel/python-rsa/commit/3283b1284475cf6
 
 Analyze patches for collected vulnerabilities:
 ```bash
-python patch_parser.py --analyze --cve CVE-2023-24580 CVE-2020-13757
+python patch_parser.py --cve CVE-2023-24580 CVE-2020-13757
 ```
 
 Expected output:
@@ -420,22 +225,27 @@ Expected output:
 ✅ 2 CVEs remaining after filtering
 🔧 Starting patch analysis processing...
 🚀 Starting patch analysis workflow...
-
 📝 Step 1: Processing possible commit URLs...
+Processing possible commit URLs for 2 CVEs...
+Using sequential processing mode for commits...
+Processing CVE commits: 100%|████████████████████████████████████████| 2/2 [00:00<00:00, 5130.65it/s]
+Completed processing commit information for 2 CVEs
+Save new cve2advisory to /path_to/data/icse_demo/cve2advisory_enhanced.pkl
 ✅ Processed commit information for 2 CVEs
    📊 Total packages processed: 2
    📊 Total commits found: 5
    📊 Average commits per package: 2.50
-
 🔍 Step 2: Filtering and prioritizing commits...
+Filtering and prioritizing commits...
+Filtered commits: 2 CVEs remaining
 ✅ 2 CVEs remaining after filtering
 📊 Filtering Statistics:
    - Packages after filtering: 2
    - Total commits after filtering: 5
    - Average commits per CVE: 2.50
    - Average commits per package: 2.50
-
 🔬 Step 3: Analyzing code change scope...
+Analyzing scope: 100%|████████████████████████████████████████████████| 2/2 [00:00<00:00, 169.11it/s]
 ✅ Completed scope analysis for 2 CVEs
 📊 Scope Analysis Statistics:
    - CVEs with scope analysis: 2/2
@@ -443,8 +253,8 @@ Expected output:
    - Total modified files: 17
    - Average VFCs per CVE: 2.50
    - Average modified files per CVE: 8.50
-
 🎯 Step 4: Analyzing vulnerable functions...
+Analyzing vulnerable functions: 100%|████████████████████████████████| 2/2 [00:00<00:00, 7503.23it/s]
 ✅ Completed vulnerable function analysis for 2 CVEs
 📊 Vulnerable Function Analysis Statistics:
    - CVEs with vulnerable functions: 2/2
@@ -454,7 +264,16 @@ Expected output:
      * old_method_direct_modified_by_deleted_lines: 9
      * old_method_only_modified_by_added_lines: 4
 
+🔍 Filtering CVEs with vulnerable functions...
+Total functions found: 13
+
+✅ Saved 2 CVEs with vulnerable functions to /path/to/data/icse_demo/data/icse_demo/cve2advisory_vf.pkl
+📈 Coverage: 2/2 (100.0%)
+================================================================================
 📊 Step 5: Evaluating analysis results...
+✅ Scope analysis evaluation completed
+Evaluating vulnerable functions: 100%|██████████████████████████████| 2/2 [00:00<00:00, 92182.51it/s]
+
 📊 === Vulnerable Functions Overall Statistics ===
    - Total CVEs: 2
    - Total packages: 2
@@ -465,6 +284,7 @@ Expected output:
    - CVEs with extractable functions: 2/2 (100.0%)
    - CVEs without extractable functions: 0/2 (0.0%)
    - Average functions per CVE: 6.50
+   - Average functions per CVE with functions: 6.50
 
 📊 === VFC-level Function Statistics ===
    - VFCs with extractable functions: 5/5 (100.0%)
@@ -481,10 +301,35 @@ Expected output:
       - CVE coverage: 1 (50.0%)
       - VFC coverage: 2 (40.0%)
 
+📊 === Strategy Group Analysis ===
+
+   🔍 Method Modification Strategies:
+      - old_method_direct_modified_by_deleted_lines: 1 CVEs (50.0%)
+      - old_method_only_modified_by_added_lines: 1 CVEs (50.0%)
+      - special_method_only_existed_in_new_file: 0 CVEs (0.0%)
+      - added_methods_replace_same_name_old_methods: 0 CVEs (0.0%)
+      📈 Group Summary:
+         - Combined unique CVEs: 2 (100.0%)
+         - Total functions: 13
+
+   🔍 Variable Impact Strategies:
+      - module_vars_impact_functions: 0 CVEs (0.0%)
+      - class_vars_impact_functions: 0 CVEs (0.0%)
+      📈 Group Summary:
+         - Combined unique CVEs: 0 (0.0%)
+         - Total functions: 0
+
+   🔍 Function Call Strategies:
+      - module_called_functions: 0 CVEs (0.0%)
+      📈 Group Summary:
+         - Combined unique CVEs: 0 (0.0%)
+         - Total functions: 0
 ✅ Vulnerable function evaluation completed
 💾 Saving evaluation results...
-✅ Evaluation results saved to /path/to/data/icse_demo/evaluation_results.json
+✅ Evaluation results saved to /path/to/data/icse_demo/data/icse_demo/evaluation_results.json
 🏁 Patch analysis workflow completed!
+🎉 Patch analysis completed!
+📈 Analyzed commit information for 2 CVEs
 ```
 
 The analysis includes:
@@ -505,27 +350,17 @@ Expected output:
 ```
 🚀 Starting dependents and dependency collection
 📊 Loading CVE advisory data...
-✅ Successfully loaded 2281 CVE records
+✅ Successfully loaded 2 CVE records
 🔍 Filtering by specified CVEs: ['CVE-2023-24580', 'CVE-2020-13757']
 ✅ 2 CVEs remaining after filtering
 🔄 Processing CVE CVE-2020-13757 (1/2)
-🔍 Processing CVE: CVE-2020-13757
-📁 Dependents file: /path/to/data/icse_demo/dependents/CVE-2020-13757.json
+📊 CVE CVE-2020-13757: 31 direct + 28 indirect = 59 total dependents
 🔄 Processing CVE CVE-2023-24580 (2/2)
-🔍 Processing CVE: CVE-2023-24580
-📁 Dependents file: /path/to/data/icse_demo/dependents/CVE-2023-24580.json
 📊 CVE CVE-2023-24580: 43 direct + 1 indirect = 44 total dependents
 ✅ Successfully processed 2 CVEs with dependents
-💾 Results saved to /path/to/data/icse_demo/cve_dependents_results.json
+💾 Results saved to /home/kevin/PyVulAudit/data/icse_demo/cve_dependents_results.json
 🔧 ChromeDriver closed
 🔚 WebDriver closed, execution completed
-```
-
-**Additional Options:**
-
-Collect dependents with their dependency graphs for deeper analysis:
-```bash
-python src/collect_dependents_and_dependency.py --cve CVE-2023-24580 --collect-dependency-graph
 ```
 
 ### 6. Package Installation and Analysis
@@ -552,10 +387,13 @@ Expected output:
 
 🔄 Step 2: Collecting metadata for packages
 📦 Target packages: 2 upstream, 59 downstream
-📂 Loading cached metadata results
+🔍 Collecting package metadata from PyPI
+  📥 Processing 59 downstream packages...
+  📥 Processing 2 upstream packages...
+💾 Saving failed packages cache to: ../docker_workdir_new/failed_pkgs.pkl
 🧹 Filtering out failed packages:
-  ❌ Failed downstream: 13
   ❌ Failed upstream: 0
+  ❌ Failed downstream: 0
 ✅ Successfully collected metadata:
   📦 Upstream packages: 2
   📦 Downstream packages: 59
@@ -626,60 +464,13 @@ Expected output:
             ... and 3 more invocations
 ```
 
-**Additional Options:**
-
-Display the shortest paths from vulnerable invovations to vulnerable functions :
-
-```bash
-python reachability_checker.py --cve CVE-2020-13757 --show-paths
-```
-
-## 🏗 Architecture
-
-PyVulAudit follows a modular architecture with the following core components:
-
-### Core Modules
-
-#### 1. VulnerabilityCollector (`vulnerability_collector.py`)
-- **Purpose**: Collects and processes vulnerability data from OSV database
-- **Key Features**:
-  - Downloads OSV database for Python packages
-  - Filters and transforms vulnerability records
-  - Extracts affected package versions and metadata
-  - Identifies potential fix commits from GitHub repositories
-- **Output**: CVE-to-advisory mappings with package and version information
-
-#### 2. PatchParser (`patch_parser.py`)
-- **Purpose**: Analyzes patches and code changes for vulnerability fixes
-- **Key Features**:
-  - Clones repositories and analyzes commit history
-  - Performs AST-based code change analysis
-  - Identifies vulnerable functions and methods
-  - Extracts scope information (class, function, module level changes)
-- **Output**: Detailed code change analysis with vulnerable function identification
-
-#### 3. ReachabilityChecker (`reachability_checker.py`)
-- **Purpose**: Determines if vulnerable functions are reachable in downstream projects
-- **Key Features**:
-  - Constructs call graphs for Python packages using JARVIS
-  - Analyzes import relationships and function calls
-  - Computes reachability from entry points to vulnerable functions
-- **Output**: Reachability analysis results with detailed call paths
-
-#### 5. Supporting Components
-
-
-- **Constants** (`constant.py`): Centralized configuration and path management
-- **Snapshot Creator** (`create_snapshot.py`): Creates reproducible analysis snapshots
-- **Dependents and Dependency Collector** (`collect_dependents_and_dependency.py`): Collects package dependents and dependency graphs using deps.dev API and web scraping
-- **Package Installation Manager** (`install_pkg.py`): Docker-based environment analyzer for safe package installation, dependency analysis, and call graph generation
-
 ## 🙏 Acknowledgments
 
 - [OSV (Open Source Vulnerabilities)](https://osv.dev/): For providing a comprehensive database of security advisories.
 - [OSI(Open Source Insignts)](https://github.com/google/deps.dev): For enabling the dependency analysis of software ecosystems.
 - [PyDriller](https://github.com/ishepard/pydriller): For its capabilities in Git repository analysis.
 - [JARVIS](https://github.com/pythonJaRvis/pythonJaRvis.github.io): For its capabilities in Python Call Graph construction.
-- [Tree-sitter](https://github.com/tree-sitter): For its ess- The Python security community for their ongoing efforts.
+- [Tree-sitter](https://github.com/tree-sitter): For its capabilities in Source Coude Parsing. 
+- The Python security community for their ongoing efforts.
 edication and collaborative efforts.
 
