@@ -16,6 +16,6 @@ tqdm ==4.67.1
 # Code analysis and parsing
 tree-sitter==0.23.2
 tree-sitter-python==0.23.6
-networkx
-stdlib_list
+networkx==3.2.1
+stdlib_list==0.11.1
 docker==7.1.0

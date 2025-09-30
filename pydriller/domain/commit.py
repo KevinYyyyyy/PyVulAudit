@@ -1742,6 +1742,7 @@ class ModifiedFile:
         # [(line_num, content) for line_num, content in deleted 
                 #   if not content.strip().startswith('#') and content.strip()]
         cleaned_lines = []
+        logger.warning(changed_lines)
         for line_num, content in changed_lines:
             content = content.strip()
             if not len(content):

@@ -245,6 +245,16 @@ class ReachabilityChecker:
             print(f"\n📋 Cached Analysis Report for {cve_id}")
             print("=" * 60)
             
+            # Initialize JSON data structure for this CVE
+            cve_json_data = {
+                "cve_id": cve_id,
+                "total_upstream_versions_analyzed": 0,
+                "total_downstream_packages": 0,
+                "total_reachable_packages": 0,
+                "overall_reachability_rate": "0.00%",
+                "reachable_package_list": []
+            }
+            
             total_upstream = len(results)
             total_downstream = 0
             reachable_pairs = 0
@@ -264,6 +274,14 @@ class ReachabilityChecker:
                     print(f"   Total downstream packages: {len(downstream_results)}")
                     print(f"   Reachable packages: {len(reachable_packages)}")
                     
+                    # Prepare upstream package data for JSON
+                    upstream_data = {
+                        "total_downstream_packages": len(downstream_results),
+                        "reachable_packages": len(reachable_packages),
+                        "reachability_rate": f"{(len(reachable_packages) / len(downstream_results) * 100):.2f}%" if len(downstream_results) > 0 else "0.00%",
+                        "reachable_package_details": {}
+                    }
+                    
                     if reachable_packages:
                         print(f"   Reachable package list:")
                         for pkg in reachable_packages[:5]:
@@ -277,6 +295,25 @@ class ReachabilityChecker:
                                         detailed_data = json.load(df)
                                     vulnerable_invocations = detailed_data.get('vulnerable_invocation', [])
                                     invocation_paths = detailed_data.get('invocation_paths', {})
+                                    
+                                    # Add package details to JSON
+                                    package_details = {
+                                        "vulnerable_invocations_count": len(vulnerable_invocations),
+                                        "invocations": vulnerable_invocations
+                                    }
+                                    
+                                    # Add path information if show_paths is enabled
+                                    if self.show_paths and invocation_paths:
+                                        package_details["invocation_paths"] = {}
+                                        for invocation in vulnerable_invocations:
+                                            if invocation in invocation_paths:
+                                                path_info = invocation_paths[invocation]
+                                                package_details["invocation_paths"][invocation] = {
+                                                    "path_length": path_info.get('path_length', 'unknown'),
+                                                    "path": path_info.get('path', [])
+                                                }
+                                    
+                                    upstream_data["reachable_package_details"][pkg] = package_details
                                     
                                     if vulnerable_invocations:
                                         print(f"          🎯 Vulnerable invocations ({len(vulnerable_invocations)}):")
@@ -293,12 +330,41 @@ class ReachabilityChecker:
                                     
                                 except (json.JSONDecodeError, IOError) as e:
                                     logger.warning(f"Failed to load detailed results for {pkg}: {e}")
+                                    # Add empty data if failed to load
+                                    empty_package_details = {
+                                        "vulnerable_invocations_count": 0,
+                                        "invocations": []
+                                    }
+                                    # Add empty path information if show_paths is enabled
+                                    if self.show_paths:
+                                        empty_package_details["invocation_paths"] = {}
+                                    
+                                    upstream_data["reachable_package_details"][pkg] = empty_package_details
                         
                         if len(reachable_packages) > 5:
                             print(f"        ... and {len(reachable_packages) - 5} more packages")
+                    
+                    # Add upstream data to JSON structure
+                    cve_json_data["reachable_package_list"].append({upstream_key: upstream_data})
+            
+            # Update overall statistics
+            cve_json_data["total_upstream_versions_analyzed"] = total_upstream
+            cve_json_data["total_downstream_packages"] = total_downstream
+            cve_json_data["total_reachable_packages"] = reachable_pairs
+            cve_json_data["overall_reachability_rate"] = f"{(reachable_pairs / total_downstream * 100):.2f}%" if total_downstream > 0 else "0.00%"
             
             print("=" * 60)
             print(f"✅ Report display completed")
+            
+            # Save JSON data for this CVE
+            json_output_file = REACHABILITY_DIR_DATE / f'{cve_id}_reachability_report.json'
+            try:
+                with open(json_output_file, 'w') as f:
+                    json.dump(cve_json_data, f, indent=2)
+                print(f"💾 Reachability report saved to: {json_output_file}")
+            except Exception as e:
+                print(f"❌ Error saving reachability report to JSON: {e}")
+            
             return True
             
         except (json.JSONDecodeError, IOError) as e:
@@ -366,7 +432,6 @@ class ReachabilityChecker:
                 return downstream, "Jarvis Failed"
             else:
                 return downstream, "Not Jarvis"
-        
         # Load and parse call graph
         try:
             with open(jarvis_output_file, 'r') as f:
@@ -687,10 +752,67 @@ def main():
     
     
     print(f"\n📋 Displaying analysis reports...")
+    
+    # Initialize overall summary data
+    overall_summary = {
+        "reachability_checker": {
+            "total_upstream_versions_analyzed": 0,
+            "total_downstream_packages": 0,
+            "total_reachable_packages": 0,
+            "overall_reachability_rate": "0.00%",
+            "reachable_package_list": []
+        }
+    }
+    
+    # Collect data from each CVE
     for cve_id in cve2advisory:
         success = checker.display_cached_report(cve_id)
         if not success:
             print(f"❌ Failed to display cached report for {cve_id}")
+            continue
+            
+        # Try to load the individual CVE JSON report
+        cve_json_file = REACHABILITY_DIR_DATE / f'{cve_id}_reachability_report.json'
+        if cve_json_file.exists():
+            try:
+                with open(cve_json_file, 'r') as f:
+                    cve_data = json.load(f)
+                
+                # Aggregate statistics
+                overall_summary["reachability_checker"]["total_upstream_versions_analyzed"] += cve_data.get("total_upstream_versions_analyzed", 0)
+                overall_summary["reachability_checker"]["total_downstream_packages"] += cve_data.get("total_downstream_packages", 0)
+                overall_summary["reachability_checker"]["total_reachable_packages"] += cve_data.get("total_reachable_packages", 0)
+                
+                # Add CVE-specific reachable package list
+                if cve_data.get("reachable_package_list"):
+                    overall_summary["reachability_checker"]["reachable_package_list"].extend(cve_data["reachable_package_list"])
+                    
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(f"Failed to load JSON report for {cve_id}: {e}")
+    
+    # Calculate overall reachability rate
+    total_downstream = overall_summary["reachability_checker"]["total_downstream_packages"]
+    total_reachable = overall_summary["reachability_checker"]["total_reachable_packages"]
+    if total_downstream > 0:
+        overall_summary["reachability_checker"]["overall_reachability_rate"] = f"{(total_reachable / total_downstream * 100):.2f}%"
+    
+    # Save overall summary to JSON file
+    summary_json_file = REACHABILITY_DIR_DATE / 'reachability_checker_summary.json'
+    try:
+        with open(summary_json_file, 'w') as f:
+            json.dump(overall_summary, f, indent=2)
+        print(f"\n💾 Overall reachability summary saved to: {summary_json_file}")
+        
+        # Display summary statistics
+        print(f"\n📊 Overall Reachability Analysis Summary:")
+        print(f"   Total upstream versions analyzed: {overall_summary['reachability_checker']['total_upstream_versions_analyzed']}")
+        print(f"   Total downstream packages: {overall_summary['reachability_checker']['total_downstream_packages']}")
+        print(f"   Total reachable packages: {overall_summary['reachability_checker']['total_reachable_packages']}")
+        print(f"   Overall reachability rate: {overall_summary['reachability_checker']['overall_reachability_rate']}")
+        
+    except Exception as e:
+        print(f"❌ Error saving overall summary to JSON: {e}")
+    
     print("Analysis complete!")
     logger.info("Analysis complete!")
 

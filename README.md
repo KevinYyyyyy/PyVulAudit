@@ -1,7 +1,6 @@
 # PyVulAudit
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
 
 PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities and their impact to other Python packages. It automatically collects vulnerability data from the OSV database, analyzes patch implementations, and performs reachability analysis to understand the impact of vulnerabilities in PyPI ecosystem. This tool is designed for security researchers, developers, and maintainers who need to assess vulnerability exposure in Python projects.
@@ -34,14 +33,14 @@ PyVulAudit is a comprehensive tool for analyzing Python package vulnerabilities 
 - **Python**: Version 3.9 or higher
 - **Docker**: Required for containerized installation 
 - **Chrome/Chromium**: Required for web scraping functionality
-- **GitHub Access Token** : Required for repository analysis
+- **GitHub Access Token**: Required for repository analysis
 - **Memory**: Sufficient RAM recommended for call graph construction(configurable based on analysis scope; 32GB was used in our experiments)
 - **Storage**: Sufficient disk space for vulnerability databases and analysis results
 
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/PyVulAudit.git
+git clone https://github.com/KevinYyyyyy/PyVulAudit.git
 cd PyVulAudit
 ```
 
@@ -78,7 +77,7 @@ To get started with PyVulAudit, follow these simple steps:
    python collect_dependents_and_dependency.py 
    ```
 
-4. **install pkgs and generate call graph**
+4. **Install pkgs and generate call graphs**
 
    ``````
    python install_pkg.py 
@@ -92,7 +91,7 @@ To get started with PyVulAudit, follow these simple steps:
 
 ## 📋 Command Line Parameters
 
-PyVulAudit supports various command line parameters for vulnerability collection and analysis.
+PyVulAudit supports various command-line parameters for vulnerability collection and analysis.
 
 
 ### Configuration Options
@@ -129,7 +128,7 @@ PyVulAudit supports various command line parameters for vulnerability collection
 </table>
 
 
-### Reachability Analysis Addtional Parameters
+### Reachability Analysis Additional Parameters
 
 The `reachability_checker.py` script supports the following parameters for vulnerability reachability analysis:
 
@@ -365,7 +364,7 @@ Expected output:
 
 ### 6. Package Installation and Analysis
 
-Install and analyze packages for specific CVE:
+Install and analyze packages for a specific CVE:
 ```bash
 python src/install_pkg.py --cve CVE-2020-13757
 ```
@@ -467,10 +466,10 @@ Expected output:
 ## 🙏 Acknowledgments
 
 - [OSV (Open Source Vulnerabilities)](https://osv.dev/): For providing a comprehensive database of security advisories.
-- [OSI(Open Source Insignts)](https://github.com/google/deps.dev): For enabling the dependency analysis of software ecosystems.
+- [OSI(Open Source Insights)](https://github.com/google/deps.dev): For enabling the dependency analysis of software ecosystems.
 - [PyDriller](https://github.com/ishepard/pydriller): For its capabilities in Git repository analysis.
 - [JARVIS](https://github.com/pythonJaRvis/pythonJaRvis.github.io): For its capabilities in Python Call Graph construction.
-- [Tree-sitter](https://github.com/tree-sitter): For its capabilities in Source Coude Parsing. 
+- [Tree-sitter](https://github.com/tree-sitter): For its capabilities in Source Code Parsing. 
 - The Python security community for their ongoing efforts.
 edication and collaborative efforts.
 

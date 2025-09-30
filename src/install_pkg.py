@@ -667,7 +667,7 @@ class JarvisCallGraphGenerator:
         entry_files = ' '.join(py_files_list)
         logger.info(f"Executing jarvis for {package} {version} with {len(py_files_list)} files")
         
-        external_abs_path = workdir / "pypi_packages" / package / version
+        external_abs_path = (workdir / "pypi_packages" / package / version).absolute()
         
         # Configure based on platform
         if sys.platform == 'darwin':
@@ -682,7 +682,7 @@ class JarvisCallGraphGenerator:
             max_mem_gb = max_mem_gb or 32
             cmd = (
                 f"ulimit -v {max_mem_gb * 1024 * 1024} && "
-                f"timeout {jarvis_timeout}  jarvis-cli {entry_files} "
+                f"timeout {jarvis_timeout} jarvis-cli {entry_files} "
                 f"--decy -o {jarvis_output_file} -ext {external_abs_path}"
             )
         try:
@@ -1051,7 +1051,6 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
         max_mem_gb = max_mem_gb or 32
     for py_version, packages in install_tasks.items():
         py_version = py_version.strip()
-        
         # Skip unsupported versions
         if py_version == '3.14':
             logger.warning("Docker fails because there's no official Python 3.14 image available")
@@ -1134,7 +1133,7 @@ def install_packages_with_version_control(install_tasks: Dict, workdir: Path,
                                 logger.error(f"Call graph generation error: {e}")
                     
                     # Cleanup
-                    _cleanup_batch_packages(workdir, batch_packages)
+                    # _cleanup_batch_packages(workdir, batch_packages)
             
             else:
                 # Only collect Python file structure
@@ -1496,6 +1495,19 @@ def main():
     
     # Handle legacy argument name
     args.use_cache = not args.force_update
+    
+    # Initialize rewrite parameters based on force_update
+    if args.force_update:
+        # When force_update is True, all rewrite parameters should be True
+        args.rewrite_structure = True
+        args.rewrite_metadata = True
+        args.rewrite_installation_tasks = True
+        args.rewrite_call_graphs = True
+    else:
+        args.rewrite_structure = False
+        args.rewrite_metadata = False
+        args.rewrite_installation_tasks = False
+        args.rewrite_call_graphs = False
     # Setup working directory
     args.workdir.mkdir(parents=True, exist_ok=True)
     print(f"📁 Working directory: {args.workdir}")
@@ -1540,7 +1552,7 @@ def main():
     
     # Step 1: Get all downstream and upstream packages
     print("\n🔄 Step 1: Analyzing downstream and upstream package relationships")
-    if pairs_cache_file.exists() and args.use_cache and False:
+    if pairs_cache_file.exists() and not args.rewrite_metadata:
         print("📂 Loading cached downstream and pairs data")
         logger.info("Loading cached downstream and pairs data")
         with open(pairs_cache_file, 'rb') as f:
@@ -1584,7 +1596,7 @@ def main():
     logger.info(f'Collecting metadata for {len(all_upstream)} upstream packages '
                f'with {len(all_downstream)} downstream packages')
     
-    if failed_pkgs_cache_file.exists() and metadata_file.exists() and args.use_cache:
+    if failed_pkgs_cache_file.exists() and metadata_file.exists() and not args.rewrite_metadata:
         print("📂 Loading cached metadata results")
         logger.info("Loading cached metadata results")
         with open(failed_pkgs_cache_file, 'rb') as f:
@@ -1618,7 +1630,7 @@ def main():
                f'and {len(all_downstream)} downstream packages')
     # Step 3: Generate installation tasks
     print(f'\n🔄 Step 3: Generating installation tasks')
-    if not (install_tasks_file.exists() and install_tasks_file_for_upstream.exists()) or not args.use_cache:
+    if not (install_tasks_file.exists() and install_tasks_file_for_upstream.exists()) or args.rewrite_installation_tasks:
         print("🔧 Generating new installation tasks")
         logger.info("Generating installation tasks")
         generate_install_tasks(
@@ -1653,7 +1665,7 @@ def main():
     logger.info(f"Upstream: {upstream_task_count} total tasks")
     # Step 4: Collect Python file structures
     print(f'\n🔄 Step 4: Collecting Python file structures')
-    if pkg_with_py_file_cache_file.exists() and args.use_cache:
+    if pkg_with_py_file_cache_file.exists() and not args.rewrite_structure:
         print("📂 Loading cached Python file data")
         logger.info("Loading cached Python file data")
         with open(pkg_with_py_file_cache_file, 'rb') as f:
@@ -1715,7 +1727,7 @@ def main():
     logger.info("Starting full package installation with dependencies")
     install_packages_with_version_control(
         install_tasks_for_downstream, args.workdir, metadata_file,
-        install_tasks_list=all_downstream_with_py_file, only_py_list=False, 
+        install_tasks_list=all_downstream_filtered_with_py_file, only_py_list=False, 
         save_installed=True
     )
     

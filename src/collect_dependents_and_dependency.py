@@ -220,11 +220,11 @@ def get_dependents_for_version(package, version, force_update=False):
     
     # Check cache file
     if dependents_file.exists() and not force_update:
-        print(f"📂 Loading cached dependents from {dependents_file}")
+        # print(f"📂 Loading cached dependents from {dependents_file}")
         with open(dependents_file, 'r') as f:
             dependents = json.load(f)
         if 'ERROR' not in dependents['direct'] and 'ERROR' not in dependents['indirect'] and dependents:
-            print(f"✅ Loaded {len(dependents['direct'])} direct and {len(dependents['indirect'])} indirect dependents from cache")
+            # print(f"✅ Loaded {len(dependents['direct'])} direct and {len(dependents['indirect'])} indirect dependents from cache")
             return dependents
     # Get dependents
     print(f"🔍 Fetching fresh dependents data for {package}@{version}")

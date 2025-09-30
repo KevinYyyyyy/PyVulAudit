@@ -823,16 +823,20 @@ class CommitProcessor:
 
 
     def extract_vulnerable_funcs_for_func_scope(self,file:ModifiedFile):
+       
         vfs_dict = {
                 'old_method_direct_modified_by_deleted_lines':set(),
                 'old_method_only_modified_by_added_lines':set(),
                 'special_method_only_existed_in_new_file':set(),
                 'added_methods_replace_same_name_old_methods':set(),
             }
+        # if file.filename!='http.py':
+        #     return vfs_dict
         
         logger.debug(f"changed line, added:{file.cleaned_added_lines}, deleted:{file.cleaned_deleted_lines}")
         # get func, class, and vars
         # file.get_class_and_function_and_var_list()
+        logger.info(file.deleted_lines)
         old_methods_changed:List[Method] = file.methods_changed_old
         new_methods_changed:List[Method] = file.methods_changed_new
         old_methods:List[Method] = file.methods_before
@@ -843,6 +847,8 @@ class CommitProcessor:
             y.long_name
             for y in old_methods_changed
         }
+        logger.warning(old_methods_changed_long_names)
+
         # vul_dict['old_method_direct_modified_by_deleted_lines'] = {old_method.long_name for old_method in old_methods_changed}
         vfs_dict['old_method_direct_modified_by_deleted_lines'] = {old_method for old_method in old_methods_changed}
         vulnerable_methods= set(old_methods_changed)
@@ -1050,7 +1056,7 @@ class CommitProcessor:
         code_changes_dict_path = CODE_CHANGES_DIR_DATE / f'{cve_id}_{repo_name}_dict.pkl'
         if not code_changes_path.parent.exists():
                 code_changes_path.parent.mkdir(parents=True)
-        if code_changes_path.exists() and code_changes_dict_path.exists() and True:
+        if code_changes_path.exists() and code_changes_dict_path.exists() and not rewrite:
             logger.info(f'Code changes for {cve_id} {repo_name} already exists, skipping...')
             with code_changes_dict_path.open('rb') as f:
                 commit2methods_dict = pickle.load(f)
@@ -1599,7 +1605,7 @@ class PatchParser:
 
     def print_vulnerable_functions_summary(self, vul_func_analysis: Dict[str, Dict]):
         """
-        Print a detailed summary of vulnerable functions for all CVEs.
+        Print a detailed summary of vulnerable functions for all CVEs and save to JSON.
         
         Args:
             vul_func_analysis: Vulnerable functions analysis results
@@ -1608,28 +1614,70 @@ class PatchParser:
         print("📋 VULNERABLE FUNCTIONS SUMMARY")
         print("="*80)
         
+        # Initialize enhanced JSON data structure with detailed commit-file-function mapping
+        patch_parser_detailed_results = {
+            "metadata": {
+                "generated_at": datetime.now().isoformat(),
+                "version": "2.0",
+                "description": "Detailed patch parser results with explicit commit-file-function mapping"
+            },
+            "summary": {
+                "total_cves_analyzed": 0,
+                "cves_with_functions": 0,
+                "total_commits": 0,
+                "total_files_modified": 0,
+                "total_functions_extracted": 0
+            },
+            "cves": [],
+            "extraction_statistics": {
+                "by_strategy": {},
+                "by_file_type": {},
+                "coverage_metrics": {}
+            }
+        }
+        
         total_cves = len(vul_func_analysis)
         total_functions = 0
         cves_with_functions = 0
+        all_commits = set()
+        strategy_stats = defaultdict(int)
+        file_type_stats = defaultdict(int)
         
         for cve_id, cve_data in vul_func_analysis.items():
             cve_functions = 0
-            cve_packages = 0
+            cve_packages = []
             
             print(f"\n🔍 CVE: {cve_id}")
             print("-" * 60)
+            
+            cve_entry = {
+                "cve_id": cve_id,
+                "packages": [],
+                "total_functions": 0,
+                "total_commits": 0,
+                "total_files": 0
+            }
             
             for package_name, package_data in cve_data.items():
                 if 'vulnerable_functions_data' not in package_data:
                     continue
                     
-                cve_packages += 1
                 vf_data = package_data['vulnerable_functions_data']
                 repo_url = package_data['repo_url']
                 
                 package_functions = 0
+                package_commits = []
+                
                 print(f"  📦 Package: {package_name}")
                 print(f"     Repository: {repo_url}")
+                
+                package_entry = {
+                    "package_name": package_name,
+                    "repository_url": repo_url,
+                    "commits": [],
+                    "total_functions": 0,
+                    "total_files": 0
+                }
                 
                 for fixing_commit, commit_data in vf_data.items():
                     if not isinstance(commit_data, dict):
@@ -1637,52 +1685,128 @@ class PatchParser:
                     
                     commit_functions = 0
                     commit_short = fixing_commit.split('/')[-1][:8] if '/' in fixing_commit else fixing_commit[:8]
+                    all_commits.add(commit_short)
+                    
+                    commit_entry = {
+                        "commit_id": commit_short,
+                        "commit_url": fixing_commit,
+                        "files": [],
+                        "total_functions": 0
+                    }
                     
                     for file_name, file_vf_data in commit_data.items():
                         if not isinstance(file_vf_data, dict):
                             continue
                         
                         file_functions = 0
-                        function_details = []
+                        file_strategies = []
+                        
+                        file_entry = {
+                            "file_path": file_name,
+                            "file_type": file_name.split('.')[-1] if '.' in file_name else "unknown",
+                            "extraction_strategies": [],
+                            "total_functions": 0
+                        }
                         
                         for strategy, functions in file_vf_data.items():
                             if functions and len(functions) > 0:
-                                file_functions += len(functions)
-                                # Extract function names if they are objects with long_name attribute
-                                func_names = []
-                                for func in functions:
-                                    if hasattr(func, 'long_name'):
-                                        func_names.append(func.long_name)
-                                    elif isinstance(func, str):
-                                        func_names.append(func)
-                                    else:
-                                        func_names.append(str(func))
+                                strategy_functions = []
                                 
-                                if func_names:
-                                    function_details.append(f"{strategy}: {', '.join(func_names)}")
+                                # Extract detailed function information
+                                for func in functions:
+                                    func_info = {
+                                        "function_name": "",
+                                        "line_number": None,
+                                    }
+                                    
+                                    if hasattr(func, 'long_name'):
+                                        func_info["function_name"] = func.long_name
+                                        if hasattr(func, 'start_line'):
+                                            func_info["line_number"] = func.start_line
+                                        
+                                    elif isinstance(func, str):
+                                        func_info["function_name"] = func
+                                    else:
+                                        func_info["function_name"] = str(func)
+                                    
+                                    strategy_functions.append(func_info)
+                                
+                                strategy_entry = {
+                                    "strategy_name": strategy,
+                                    "functions_count": len(strategy_functions),
+                                    "functions": strategy_functions
+                                }
+                                
+                                file_entry["extraction_strategies"].append(strategy_entry)
+                                file_functions += len(strategy_functions)
+                                strategy_stats[strategy] += len(strategy_functions)
+                                
+                                # Display function details
+                                func_names = [f["function_name"] for f in strategy_functions]
+                                file_strategies.append(f"{strategy}: {', '.join(func_names)}")
                         
                         if file_functions > 0:
-                            print(f"     📄 {file_name} ({file_functions} functions)")
-                            for detail in function_details:
-                                print(f"        • {detail}")
+                            file_entry["total_functions"] = file_functions
+                            commit_entry["files"].append(file_entry)
                             commit_functions += file_functions
+                            
+                            # Update file type statistics
+                            file_type = file_entry["file_type"]
+                            file_type_stats[file_type] += file_functions
+                            
+                            print(f"     📄 {file_name} ({file_functions} functions)")
+                            for detail in file_strategies:
+                                print(f"        • {detail}")
                     
                     if commit_functions > 0:
-                        print(f"     🔧 Commit {commit_short}: {commit_functions} functions")
+                        commit_entry["total_functions"] = commit_functions
+                        package_entry["commits"].append(commit_entry)
                         package_functions += commit_functions
+                        
+                        print(f"     🔧 Commit {commit_short}: {commit_functions} functions")
                 
                 if package_functions > 0:
-                    print(f"     ✅ Total functions in package: {package_functions}")
+                    package_entry["total_functions"] = package_functions
+                    package_entry["total_files"] = sum(len(c["files"]) for c in package_entry["commits"])
+                    cve_entry["packages"].append(package_entry)
                     cve_functions += package_functions
+                    
+                    print(f"     ✅ Total functions in package: {package_functions}")
                 else:
                     print(f"     ❌ No vulnerable functions found in package")
             
             if cve_functions > 0:
-                print(f"  🎯 CVE Total: {cve_functions} functions across {cve_packages} packages")
+                cve_entry["total_functions"] = cve_functions
+                cve_entry["total_commits"] = sum(len(p["commits"]) for p in cve_entry["packages"])
+                cve_entry["total_files"] = sum(p["total_files"] for p in cve_entry["packages"])
+                
+                patch_parser_detailed_results["cves"].append(cve_entry)
                 cves_with_functions += 1
                 total_functions += cve_functions
+                
+                print(f"  🎯 CVE Total: {cve_functions} functions across {len(cve_entry['packages'])} packages")
             else:
                 print(f"  ❌ No vulnerable functions found in CVE")
+        
+        # Finalize summary statistics
+        patch_parser_detailed_results["summary"] = {
+            "total_cves_analyzed": total_cves,
+            "cves_with_functions": cves_with_functions,
+            "total_commits": len(all_commits),
+            "total_files_modified": sum(cve["total_files"] for cve in patch_parser_detailed_results["cves"]),
+            "total_functions_extracted": total_functions
+        }
+        
+        # Finalize extraction statistics
+        patch_parser_detailed_results["extraction_statistics"] = {
+            "by_strategy": dict(strategy_stats),
+            "by_file_type": dict(file_type_stats),
+            "coverage_metrics": {
+                "cves_coverage_percentage": cves_with_functions/total_cves*100 if total_cves > 0 else 0,
+                "avg_functions_per_cve": total_functions/cves_with_functions if cves_with_functions > 0 else 0,
+                "avg_commits_per_cve": len(all_commits)/cves_with_functions if cves_with_functions > 0 else 0
+            }
+        }
         
         print("\n" + "="*80)
         print("📊 OVERALL STATISTICS")
@@ -1691,11 +1815,47 @@ class PatchParser:
         print(f"CVEs with vulnerable functions: {cves_with_functions}")
         print(f"CVEs without vulnerable functions: {total_cves - cves_with_functions}")
         print(f"Total vulnerable functions extracted: {total_functions}")
+        print(f"Total commits analyzed: {len(all_commits)}")
         if total_cves > 0:
             print(f"Coverage: {cves_with_functions/total_cves*100:.1f}%")
         if cves_with_functions > 0:
             print(f"Average functions per CVE (with functions): {total_functions/cves_with_functions:.2f}")
         print("="*80)
+        
+        # Save enhanced JSON results to file
+        try:
+            output_file = self.output_dir / "patch_parser_detailed_results.json"
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(patch_parser_detailed_results, f, indent=2, ensure_ascii=False)
+            print(f"\n💾 Detailed patch parser results saved to: {output_file}")
+            logger.info(f"Detailed patch parser results saved to JSON file: {output_file}")
+            
+            # Also save the original format for backward compatibility
+            patch_parser_results = {
+                "patch_parser": {
+                    "commits_found": len(all_commits),
+                    "modified_files": [],
+                    "total_functions": total_functions,
+                    "cves_analyzed": [{"cve_id": cve["cve_id"], "functions_count": cve["total_functions"], "packages_count": len(cve["packages"])} for cve in patch_parser_detailed_results["cves"]],
+                    "overall_statistics": {
+                        "total_cves_analyzed": total_cves,
+                        "cves_with_functions": cves_with_functions,
+                        "cves_without_functions": total_cves - cves_with_functions,
+                        "total_vulnerable_functions": total_functions,
+                        "coverage_percentage": cves_with_functions/total_cves*100 if total_cves > 0 else 0,
+                        "avg_functions_per_cve": total_functions/cves_with_functions if cves_with_functions > 0 else 0
+                    }
+                }
+            }
+            
+            legacy_output_file = self.output_dir / "patch_parser_results.json"
+            with open(legacy_output_file, 'w', encoding='utf-8') as f:
+                json.dump(patch_parser_results, f, indent=2, ensure_ascii=False)
+            print(f"💾 Legacy format results saved to: {legacy_output_file}")
+            
+        except Exception as e:
+            print(f"❌ Error saving patch parser results to JSON: {e}")
+            logger.error(f"Error saving patch parser results to JSON: {e}")
 
     def filter_and_prioritize_commits(self, processed_commits: Dict[str, Dict],
                                     filter_large_vfcs: bool = True,
@@ -2039,33 +2199,33 @@ class PatchParser:
 
         
         # Step 5: Evaluate the scope analysis and vulnerable functions
-        print("📊 Step 5: Evaluating analysis results...")
-        logger.info("Step 5: Evaluating scope analysis and vulnerable functions...")
+        # print("📊 Step 5: Evaluating analysis results...")
+        # logger.info("Step 5: Evaluating scope analysis and vulnerable functions...")
         
-        # 5.1: Evaluate scope analysis statistics
-        scope_evaluation = self.evaluate_scope_analysis(scope_analysis)
-        print("✅ Scope analysis evaluation completed")
-        logger.info("Scope analysis evaluation completed")
+        # # 5.1: Evaluate scope analysis statistics
+        # scope_evaluation = self.evaluate_scope_analysis(scope_analysis)
+        # print("✅ Scope analysis evaluation completed")
+        # logger.info("Scope analysis evaluation completed")
         
-        # 5.2: Evaluate vulnerable functions statistics  
+        # # 5.2: Evaluate vulnerable functions statistics  
         vf_evaluation = self.evaluate_vulnerable_functions(vul_func_analysis)
-        print("✅ Vulnerable function evaluation completed")
-        logger.info("Vulnerable functions evaluation completed")
+        # print("✅ Vulnerable function evaluation completed")
+        # logger.info("Vulnerable functions evaluation completed")
         
         # Save evaluation statistics
-        print("💾 Saving evaluation results...")
-        evaluation_results = {
-            'scope_evaluation': scope_evaluation,
-            'vulnerable_functions_evaluation': vf_evaluation
-        }
+        # print("💾 Saving evaluation results...")
+        # evaluation_results = {
+        #     'scope_evaluation': scope_evaluation,
+        #     'vulnerable_functions_evaluation': vf_evaluation
+        # }
         vul_func_analysis_file = self.output_dir / "vul_func_analysis.pkl"
         with vul_func_analysis_file.open('wb') as f:
             pickle.dump(vul_func_analysis, f)
-        evaluation_file = self.output_dir / "evaluation_results.json"
-        with evaluation_file.open('w', encoding='utf-8') as f:
-            json.dump(evaluation_results, f, indent=2, ensure_ascii=False)
-        print(f"✅ Evaluation results saved to {evaluation_file}")
-        logger.info(f"Evaluation results saved to {evaluation_file}")
+        # evaluation_file = self.output_dir / "evaluation_results.json"
+        # with evaluation_file.open('w', encoding='utf-8') as f:
+            # json.dump(evaluation_results, f, indent=2, ensure_ascii=False)
+        # print(f"✅ Evaluation results saved to {evaluation_file}")
+        # logger.info(f"Evaluation results saved to {evaluation_file}")
         
         print("🏁 Patch analysis workflow completed!")
         logger.info("Patch analysis completed successfully")
@@ -2363,6 +2523,35 @@ class PatchParser:
                 'vfc_list': list(stats['vfcs'])
             }
         
+        # Prepare JSON data structure for statistics
+        statistics_json = {
+            "patch_parser_statistics": {
+                "overall_statistics": {
+                    "total_cves": total_cves,
+                    "total_packages": total_packages,
+                    "total_vfcs": total_vfcs,
+                    "total_vulnerable_functions": total_vulnerable_functions
+                },
+                "cve_level_statistics": {
+                    "cves_with_functions": cves_with_functions_count,
+                    "cves_without_functions": cves_without_functions_count,
+                    "cves_with_functions_percentage": cves_with_functions_count/total_cves*100 if total_cves > 0 else 0,
+                    "cves_without_functions_percentage": cves_without_functions_count/total_cves*100 if total_cves > 0 else 0,
+                    "avg_functions_per_cve": avg_functions_per_cve,
+                    "avg_functions_per_cve_with_functions": avg_functions_per_cve_with_functions
+                },
+                "vfc_level_statistics": {
+                    "vfcs_with_functions": vfcs_with_functions_count,
+                    "vfcs_without_functions": vfcs_without_functions_count,
+                    "vfcs_with_functions_percentage": vfcs_with_functions_count/total_vfcs*100 if total_vfcs > 0 else 0,
+                    "vfcs_without_functions_percentage": vfcs_without_functions_count/total_vfcs*100 if total_vfcs > 0 else 0,
+                    "avg_functions_per_vfc": avg_functions_per_vfc
+                },
+                "extraction_strategies": [],
+                "strategy_groups": []
+            }
+        }
+        
         # Output statistics to console
         print(f"\n📊 === Vulnerable Functions Overall Statistics ===")
         print(f"   - Total CVEs: {total_cves}")
@@ -2381,15 +2570,104 @@ class PatchParser:
         print(f"   - VFCs without extractable functions: {vfcs_without_functions_count}/{total_vfcs} ({vfcs_without_functions_count/total_vfcs*100:.1f}%)")
         print(f"   - Average functions per VFC: {avg_functions_per_vfc:.2f}")
         
-        print(f"\n📊 === Top Function Extraction Strategies ===")
+        # print(f"\n📊 === Top Function Extraction Strategies ===")
         # Sort strategies by function count and show top 5
         sorted_strategies = sorted(strategy_summary.items(), key=lambda x: x[1]['total_functions'], reverse=True)
         for i, (strategy, summary) in enumerate(sorted_strategies[:]):
             if summary['total_functions'] > 0:
-                print(f"   {i+1}. {strategy}:")
-                print(f"      - Functions: {summary['total_functions']} ({summary['function_percentage']*100:.1f}%)")
-                print(f"      - CVE coverage: {summary['cves_count']} ({summary['cve_coverage_rate']*100:.1f}%)")
-                print(f"      - VFC coverage: {summary['vfcs_count']} ({summary['vfc_coverage_rate']*100:.1f}%)")
+                # print(f"   {i+1}. {strategy}:")
+                # print(f"      - Functions: {summary['total_functions']} ({summary['function_percentage']*100:.1f}%)")
+                # print(f"      - CVE coverage: {summary['cves_count']} ({summary['cve_coverage_rate']*100:.1f}%)")
+                # print(f"      - VFC coverage: {summary['vfcs_count']} ({summary['vfc_coverage_rate']*100:.1f}%)")
+                
+                # Add to JSON structure with detailed commit-file-function mapping
+                strategy_details = {
+                    "strategy_name": strategy,
+                    "rank": i + 1,
+                    "total_functions": summary['total_functions'],
+                    "function_percentage": summary['function_percentage'] * 100,
+                    "cve_coverage": summary['cves_count'],
+                    "cve_coverage_rate": summary['cve_coverage_rate'] * 100,
+                    "vfc_coverage": summary['vfcs_count'],
+                    "vfc_coverage_rate": summary['vfc_coverage_rate'] * 100,
+                    "detailed_extractions": []
+                }
+                
+                # Add detailed commit-file-function mapping for this strategy
+                for cve_id, cve_data in vul_func_analysis.items():
+                    if cve_id in summary.get('cve_list', []):
+                        cve_extractions = {
+                            "cve_id": cve_id,
+                            "packages": []
+                        }
+                        
+                        for package_name, package_data in cve_data.items():
+                            if 'vulnerable_functions_data' not in package_data:
+                                continue
+                                
+                            vf_data = package_data['vulnerable_functions_data']
+                            package_extractions = {
+                                "package_name": package_name,
+                                "repository_url": package_data.get('repo_url', ''),
+                                "commits": []
+                            }
+                            
+                            for fixing_commit, commit_data in vf_data.items():
+                                if not isinstance(commit_data, dict):
+                                    continue
+                                    
+                                commit_short = fixing_commit.split('/')[-1][:8] if '/' in fixing_commit else fixing_commit[:8]
+                                commit_extractions = {
+                                    "commit_id": commit_short,
+                                    "commit_url": fixing_commit,
+                                    "files": []
+                                }
+                                
+                                for file_name, file_vf_data in commit_data.items():
+                                    if not isinstance(file_vf_data, dict):
+                                        continue
+                                        
+                                    if strategy in file_vf_data and file_vf_data[strategy]:
+                                        functions = file_vf_data[strategy]
+                                        function_details = []
+                                        
+                                        for func in functions:
+                                            func_info = {
+                                                "function_name": "",
+                                                "line_number": None,
+                                            }
+                                            
+                                            if hasattr(func, 'long_name'):
+                                                func_info["function_name"] = func.long_name
+                                                if hasattr(func, 'start_line'):
+                                                    func_info["line_number"] = func.start_line
+                                                
+                                            elif isinstance(func, str):
+                                                func_info["function_name"] = func
+                                            else:
+                                                func_info["function_name"] = str(func)
+                                            
+                                            function_details.append(func_info)
+                                        
+                                        if function_details:
+                                            file_extraction = {
+                                                "file_path": file_name,
+                                                "file_type": file_name.split('.')[-1] if '.' in file_name else "unknown",
+                                                "functions_count": len(function_details),
+                                                "functions": function_details
+                                            }
+                                            commit_extractions["files"].append(file_extraction)
+                                
+                                if commit_extractions["files"]:
+                                    package_extractions["commits"].append(commit_extractions)
+                            
+                            if package_extractions["commits"]:
+                                cve_extractions["packages"].append(package_extractions)
+                        
+                        if cve_extractions["packages"]:
+                            strategy_details["detailed_extractions"].append(cve_extractions)
+                
+                statistics_json["patch_parser_statistics"]["extraction_strategies"].append(strategy_details)
         
         # Strategy group analysis
         strategy_groups = {
@@ -2408,22 +2686,37 @@ class PatchParser:
             ]
         }
         
-        print(f"\n📊 === Strategy Group Analysis ===")
+        # print(f"\n📊 === Strategy Group Analysis ===")
         for group_name, strategies in strategy_groups.items():
-            print(f"\n   🔍 {group_name}:")
+            # print(f"\n   🔍 {group_name}:")
             
             # Collect CVEs for each strategy in the group
             strategy_cves = {}
             total_group_functions = 0
+            group_strategies_data = []
             
             for strategy in strategies:
                 if strategy in strategy_summary:
                     strategy_cves[strategy] = set(strategy_summary[strategy]['cve_list'])
                     total_group_functions += strategy_summary[strategy]['total_functions']
-                    print(f"      - {strategy}: {len(strategy_cves[strategy])} CVEs ({len(strategy_cves[strategy])/total_cves*100:.1f}%)")
+                    # print(f"      - {strategy}: {len(strategy_cves[strategy])} CVEs ({len(strategy_cves[strategy])/total_cves*100:.1f}%)")
+                    
+                    group_strategies_data.append({
+                        "strategy_name": strategy,
+                        "cve_count": len(strategy_cves[strategy]),
+                        "cve_percentage": len(strategy_cves[strategy])/total_cves*100 if total_cves > 0 else 0,
+                        "function_count": strategy_summary[strategy]['total_functions']
+                    })
                 else:
                     strategy_cves[strategy] = set()
-                    print(f"      - {strategy}: 0 CVEs (0.0%)")
+                    # print(f"      - {strategy}: 0 CVEs (0.0%)")
+                    
+                    group_strategies_data.append({
+                        "strategy_name": strategy,
+                        "cve_count": 0,
+                        "cve_percentage": 0.0,
+                        "function_count": 0
+                    })
             
             # Calculate combined statistics for this group
             if strategy_cves:
@@ -2434,9 +2727,18 @@ class PatchParser:
                 group_cve_count = len(all_group_cves)
                 group_cve_rate = group_cve_count / total_cves if total_cves > 0 else 0
                 
-                print(f"      📈 Group Summary:")
-                print(f"         - Combined unique CVEs: {group_cve_count} ({group_cve_rate*100:.1f}%)")
-                print(f"         - Total functions: {total_group_functions}")
+                # print(f"      📈 Group Summary:")
+                # print(f"         - Combined unique CVEs: {group_cve_count} ({group_cve_rate*100:.1f}%)")
+                # print(f"         - Total functions: {total_group_functions}")
+                
+                # Add group data to JSON
+                statistics_json["patch_parser_statistics"]["strategy_groups"].append({
+                    "group_name": group_name,
+                    "strategies": group_strategies_data,
+                    "combined_unique_cves": group_cve_count,
+                    "combined_cve_rate": group_cve_rate * 100,
+                    "total_functions": total_group_functions
+                })
                 
                 # Calculate overlaps within the group
                 if len(strategies) > 1:
@@ -2452,6 +2754,17 @@ class PatchParser:
                     #     print(f"         - Strategy overlaps: {', '.join(overlaps)}")
                     # else:
                     #     print(f"         - No overlaps between strategies")
+        
+        # Save statistics JSON to file
+        try:
+            output_file = self.output_dir / "patch_parser_statistics.json"
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(statistics_json, f, indent=2, ensure_ascii=False)
+            print(f"\n💾 Patch parser statistics saved to: {output_file}")
+            logger.info(f"Patch parser statistics saved to JSON file: {output_file}")
+        except Exception as e:
+            print(f"❌ Error saving patch parser statistics to JSON: {e}")
+            logger.error(f"Error saving patch parser statistics to JSON: {e}")
         
         # Output statistics to logger
         logger.info(f"\n=== Vulnerable Functions Overall Statistics ===")
@@ -2699,6 +3012,13 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
+    
+    # Initialize rewrite parameters based on force_update
+    if args.force_update:
+        # When force_update is True, all rewrite parameters should be True
+        args.rewrite_commits = True
+        args.rewrite_scope = True
+        args.rewrite_functions = True
     
     # If no specific operation is requested, default to analyze mode
     if not args.analyze:
